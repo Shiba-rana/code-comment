@@ -143,34 +143,33 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full">
-      <header className="px-4 py-5 sm:px-8 sm:py-7 md:px-12 md:py-8 text-center flex flex-col items-center">
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-2">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="shrink-0 sm:w-8 sm:h-8">
-            <rect width="32" height="32" rx="8" fill="url(#g1)" />
-            <path d="M9 12l4 4-4 4M15 20h8" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <defs>
-              <linearGradient id="g1" x1="0" y1="0" x2="32" y2="32">
-                <stop stopColor="#6366f1" />
-                <stop offset="1" stopColor="#7c3aed" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[var(--accent)] to-purple-400 bg-clip-text text-transparent">
-            CodeComment AI
-          </h1>
+    <div className="min-h-screen flex flex-col w-full bg-[var(--bg-primary)]">
+      <header className="w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+            <span className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">
+              CodeComment AI
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-[var(--text-muted)] hidden sm:inline">
+              Safe AST Engine
+            </span>
+          </div>
         </div>
-        <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xl px-2">
-          AST-aware safe code documentation agent.
-        </p>
       </header>
 
-      <main className="flex-1 px-3 sm:px-6 md:px-12 pb-8 sm:pb-12 max-w-7xl mx-auto w-full">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
         {!result && !loading && (
-          <section className="glass-card p-4 sm:p-6 md:p-8 flex flex-col gap-5 sm:gap-6">
+          <div className="clean-card p-5 sm:p-6 flex flex-col gap-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
               <div className="sm:col-span-1 lg:col-span-3 flex flex-col gap-1.5">
-                <label htmlFor="filename-input" className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                <label htmlFor="filename-input" className="text-xs font-medium text-[var(--text-secondary)]">
                   Filename
                 </label>
                 <input
@@ -184,30 +183,30 @@ export default function Home() {
               </div>
 
               <div className="sm:col-span-1 lg:col-span-3 flex flex-col gap-1.5">
-                <label htmlFor="language-selector" className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                <label htmlFor="language-selector" className="text-xs font-medium text-[var(--text-secondary)]">
                   Language
                 </label>
                 <LanguageSelector value={language} onChange={setLanguage} />
               </div>
 
               <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                  File Upload
+                <label className="text-xs font-medium text-[var(--text-secondary)]">
+                  Upload Source
                 </label>
                 <FileUploader onFileLoaded={handleFileLoaded} />
               </div>
 
               <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                  Documentation Mode
+                <label className="text-xs font-medium text-[var(--text-secondary)]">
+                  Mode
                 </label>
-                <div className="grid grid-cols-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-1 gap-1 text-center">
+                <div className="grid grid-cols-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 gap-0.5 text-center">
                   <button
                     type="button"
                     onClick={() => setMode('minimal')}
-                    className={`py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`py-1 rounded text-xs font-medium transition-all ${
                       mode === 'minimal'
-                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                        ? 'bg-[var(--accent)] text-white'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
@@ -216,20 +215,20 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setMode('recommended')}
-                    className={`py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`py-1 rounded text-xs font-medium transition-all ${
                       mode === 'recommended'
-                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                        ? 'bg-[var(--accent)] text-white'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
-                    Recommended
+                    Standard
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('detailed')}
-                    className={`py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`py-1 rounded text-xs font-medium transition-all ${
                       mode === 'detailed'
-                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                        ? 'bg-[var(--accent)] text-white'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
                   >
@@ -246,49 +245,47 @@ export default function Home() {
             />
 
             {error && (
-              <div className="p-3 sm:p-4 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/30 text-xs sm:text-sm text-[var(--danger)]">
-                <strong>Error:</strong> {error}
+              <div className="p-3 rounded-lg bg-[var(--danger-bg)] border border-[var(--danger)]/30 text-xs text-rose-300">
+                {error}
               </div>
             )}
 
-            <div className="flex justify-center w-full">
+            <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
+              <span className="text-xs text-[var(--text-muted)]">
+                AST parser analyzes symbols and safely patches documentation comments.
+              </span>
               <button
                 id="analyze-button"
-                className="btn-primary w-full sm:w-auto text-sm sm:text-base px-6 sm:px-10 py-3"
+                className="btn-primary w-full sm:w-auto"
                 onClick={handleAnalyze}
                 disabled={loading || !code.trim()}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
-                AST Analyze &amp; Patch
+                Document Code
               </button>
             </div>
-          </section>
+          </div>
         )}
 
         {loading && (
-          <section className="glass-card p-6 sm:p-8">
+          <div className="clean-card p-8 sm:p-12 my-auto">
             <LoadingState />
-          </section>
+          </div>
         )}
 
         {result && !loading && (
-          <section className="flex flex-col gap-6 sm:gap-8">
-            <div className="glass-card p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col gap-6 w-full">
+            <div className="clean-card p-5 sm:p-6">
               <AnalysisSummary result={result} onSelectLine={handleJumpToLine} />
             </div>
 
-            <div className="glass-card p-4 sm:p-6 md:p-8 flex flex-col gap-4">
+            <div className="clean-card p-5 sm:p-6 flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
-                    AST Safe Diff (Comments Only)
-                  </h3>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Structural logic preserved 100%. Only comments patched.
-                  </p>
-                </div>
+                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                  Code Comparison
+                </span>
+                <span className="text-xs text-[var(--text-muted)]">
+                  Original (left) vs Documented (right)
+                </span>
               </div>
 
               <DiffViewer
@@ -299,38 +296,25 @@ export default function Home() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 sm:gap-4 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 w-full">
               <button id="copy-button" className="btn-secondary w-full sm:w-auto" onClick={handleCopy}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                </svg>
-                Copy Updated Code
+                Copy Code
               </button>
 
               <button id="download-button" className="btn-secondary w-full sm:w-auto" onClick={handleDownload}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
                 Download File
               </button>
 
-              <button id="reset-button" className="btn-secondary w-full sm:w-auto" onClick={handleReset}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <polyline points="1 4 1 10 7 10" />
-                  <path d="M3.51 15a9 9 0 102.13-9.36L1 10" />
-                </svg>
-                Analyze Again
+              <button id="reset-button" className="btn-primary w-full sm:w-auto" onClick={handleReset}>
+                New Analysis
               </button>
             </div>
-          </section>
+          </div>
         )}
       </main>
 
-      <footer className="text-center py-4 sm:py-6 text-xs text-[var(--text-muted)] px-4">
-        
+      <footer className="w-full border-t border-[var(--border-subtle)] py-4 text-center text-xs text-[var(--text-muted)] mt-auto">
+        CodeComment AI · AST-aware safe documentation engine
       </footer>
 
       {toast && (

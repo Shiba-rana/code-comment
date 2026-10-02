@@ -5,9 +5,14 @@ function validateAIResponse(rawResponse) {
     throw new Error('AI response is empty or not a string');
   }
 
+  let cleanResponse = rawResponse.trim();
+  if (cleanResponse.startsWith('```')) {
+    cleanResponse = cleanResponse.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+  }
+
   let parsed;
   try {
-    parsed = JSON.parse(rawResponse);
+    parsed = JSON.parse(cleanResponse);
   } catch (err) {
     throw new Error(`Invalid AI JSON response: ${err.message}`);
   }

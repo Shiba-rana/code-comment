@@ -2,19 +2,28 @@ const OpenAI = require('openai');
 const { SYSTEM_PROMPT } = require('../../prompts/documentation.prompt');
 
 let clientInstance = null;
+let lastApiKey = null;
 
 function hasValidApiKey() {
-  const key = process.env.OPENAI_API_KEY;
-  return Boolean(key && key !== 'your_key_here' && key.startsWith('sk-'));
+  const key = process.env.OPENAI_API_KEY?.trim();
+  return Boolean(key && key !== 'your_key_here' && key.length > 10);
 }
 
 function getOpenAIClient() {
-  if (!clientInstance) {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key || key === 'your_key_here') {
-      return null;
-    }
-    clientInstance = new OpenAI({ apiKey: key });
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key || key === 'your_key_here') {
+    return null;
+  }
+
+  const isAtria = key.startsWith('atr_');
+  const baseURL = process.env.OPENAI_BASE_URL || (isAtria ? 'https://api.atria-asi.ai/v1' : undefined);
+
+  if (!clientInstance || lastApiKey !== key) {
+    lastApiKey = key;
+    clientInstance = new OpenAI({
+      apiKey: key,
+      baseURL,
+    });
   }
   return clientInstance;
 }
@@ -107,11 +116,16 @@ async function requestDocumentationBatch({ userPrompt, maxRetries = 2 }) {
     return generateDeterministicFallback(userPrompt);
   }
 
+  const key = process.env.OPENAI_API_KEY?.trim() || '';
+  const isAtria = key.startsWith('atr_');
+  const defaultModel = isAtria ? 'Atria-Dawn-Preview' : 'gpt-4o';
+  const model = process.env.OPENAI_MODEL || defaultModel;
   let lastError = null;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await client.chat.completions.create({
-        model: 'gpt-4o',
+        model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
@@ -128,6 +142,9 @@ async function requestDocumentationBatch({ userPrompt, maxRetries = 2 }) {
       return content;
     } catch (err) {
       lastError = err;
+      if (err.status === 401) {
+        throw new Error(`OpenAI API Key is invalid or expired (401: ${err.message})`);
+      }
       if (attempt < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
       }
