@@ -63,6 +63,32 @@ class TypeScriptParser extends BaseParser {
       return null;
     };
 
+    const extractIdentifiersFromPattern = (node) => {
+      if (!node) return [];
+      const names = [];
+      if (node.type === 'identifier' || node.type === 'shorthand_property_identifier_pattern') {
+        names.push(node.text);
+      } else if (node.type === 'pair_pattern') {
+        const key = node.childForFieldName('key');
+        if (key) names.push(key.text);
+      } else if (node.type === 'assignment_pattern') {
+        const left = node.childForFieldName('left');
+        if (left) names.push(...extractIdentifiersFromPattern(left));
+      } else if (node.type === 'object_pattern') {
+        for (let i = 0; i < node.childCount; i++) {
+          names.push(...extractIdentifiersFromPattern(node.child(i)));
+        }
+      } else if (node.type === 'array_pattern') {
+        for (let i = 0; i < node.childCount; i++) {
+          names.push(...extractIdentifiersFromPattern(node.child(i)));
+        }
+      } else if (node.type === 'rest_pattern') {
+        const arg = node.child(1) || node.childForFieldName('argument');
+        if (arg) names.push('...' + arg.text);
+      }
+      return names;
+    };
+
     const extractParams = (paramNode) => {
       if (!paramNode) return [];
       const params = [];
@@ -70,9 +96,17 @@ class TypeScriptParser extends BaseParser {
         const child = paramNode.child(i);
         if (child.type === 'required_parameter' || child.type === 'optional_parameter') {
           const nameChild = child.childForFieldName('pattern') || child.child(0);
-          if (nameChild) params.push(nameChild.text);
+          if (nameChild) {
+            if (nameChild.type === 'object_pattern') {
+              params.push(...extractIdentifiersFromPattern(nameChild));
+            } else {
+              params.push(nameChild.text);
+            }
+          }
         } else if (child.type === 'identifier') {
           params.push(child.text);
+        } else if (child.type === 'object_pattern') {
+          params.push(...extractIdentifiersFromPattern(child));
         } else if (child.type === 'rest_pattern') {
           const arg = child.child(1);
           if (arg) params.push('...' + arg.text);
@@ -87,12 +121,20 @@ class TypeScriptParser extends BaseParser {
       if (!bodyNode) {
         return {
           externalCalls: [],
+          hooksUsed: [],
+          jsxElements: [],
+          hasJsx: false,
+          returnsJsx: false,
           hasErrorHandling: false,
           cyclomaticComplexity: 1,
         };
       }
 
       const externalCalls = new Set();
+      const hooksUsed = new Set();
+      const jsxElements = new Set();
+      let hasJsx = false;
+      let returnsJsx = false;
       let hasErrorHandling = false;
       let complexity = 1;
 
@@ -100,7 +142,32 @@ class TypeScriptParser extends BaseParser {
         if (node.type === 'call_expression') {
           const fn = node.childForFieldName('function');
           if (fn) {
-            externalCalls.add(fn.text);
+            const callName = fn.text;
+            externalCalls.add(callName);
+            if (/^use[A-Z]/.test(callName)) {
+              hooksUsed.add(callName);
+            }
+          }
+        }
+
+        if (
+          node.type === 'jsx_element' ||
+          node.type === 'jsx_self_closing_element' ||
+          node.type === 'jsx_fragment'
+        ) {
+          hasJsx = true;
+          const opening = node.childForFieldName('open_tag') || node.child(0);
+          const nameNode = opening?.childForFieldName?.('name') || opening?.child?.(1);
+          if (nameNode && /^[A-Z]/.test(nameNode.text)) {
+            jsxElements.add(nameNode.text);
+          }
+        }
+
+        if (node.type === 'return_statement') {
+          const retText = node.text;
+          if (retText.includes('<') && (retText.includes('>') || retText.includes('/>'))) {
+            returnsJsx = true;
+            hasJsx = true;
           }
         }
 
@@ -141,6 +208,10 @@ class TypeScriptParser extends BaseParser {
 
       return {
         externalCalls: Array.from(externalCalls).slice(0, 10),
+        hooksUsed: Array.from(hooksUsed),
+        jsxElements: Array.from(jsxElements).slice(0, 10),
+        hasJsx,
+        returnsJsx,
         hasErrorHandling,
         cyclomaticComplexity: complexity,
       };
@@ -178,9 +249,13 @@ class TypeScriptParser extends BaseParser {
         const bodyAnalysis = analyzeFunctionBody(bodyNode);
         const precedingComment = findPrecedingComment(startLine);
 
+        const isPascalCase = /^[A-Z][A-Za-z0-9]+$/.test(name);
+        const isReactComponent = isPascalCase && (bodyAnalysis.hasJsx || bodyAnalysis.returnsJsx || bodyAnalysis.hooksUsed.length > 0 || (effectiveNode.text.includes('<') && (effectiveNode.text.includes('/>') || effectiveNode.text.includes('</'))));
+
         symbols.push({
           name,
-          type: 'function',
+          type: isReactComponent ? 'component' : 'function',
+          isReactComponent,
           exported: isExported,
           async: isAsync,
           startLine,
@@ -190,13 +265,16 @@ class TypeScriptParser extends BaseParser {
           parameters: params,
           lineCount: endLine - startLine + 1,
           externalCalls: bodyAnalysis.externalCalls,
+          hooksUsed: bodyAnalysis.hooksUsed,
+          jsxElements: bodyAnalysis.jsxElements,
+          hasJsx: bodyAnalysis.hasJsx,
           hasErrorHandling: bodyAnalysis.hasErrorHandling,
           cyclomaticComplexity: bodyAnalysis.cyclomaticComplexity,
           hasDocumentation: Boolean(precedingComment),
           existingComment: precedingComment ? precedingComment.text : null,
           nodeStartRow: effectiveNode.startPosition.row,
           nodeStartCol: effectiveNode.startPosition.column,
-          sourceSnippet: node.text.slice(0, 500),
+          sourceSnippet: node.text.slice(0, 1500),
         });
         return;
       }
@@ -224,7 +302,7 @@ class TypeScriptParser extends BaseParser {
           existingComment: precedingComment ? precedingComment.text : null,
           nodeStartRow: effectiveNode.startPosition.row,
           nodeStartCol: effectiveNode.startPosition.column,
-          sourceSnippet: node.text.slice(0, 500),
+          sourceSnippet: node.text.slice(0, 1500),
         });
         return;
       }
@@ -252,7 +330,7 @@ class TypeScriptParser extends BaseParser {
           existingComment: precedingComment ? precedingComment.text : null,
           nodeStartRow: effectiveNode.startPosition.row,
           nodeStartCol: effectiveNode.startPosition.column,
-          sourceSnippet: node.text.slice(0, 500),
+          sourceSnippet: node.text.slice(0, 1500),
         });
         return;
       }
@@ -280,7 +358,7 @@ class TypeScriptParser extends BaseParser {
           existingComment: precedingComment ? precedingComment.text : null,
           nodeStartRow: effectiveNode.startPosition.row,
           nodeStartCol: effectiveNode.startPosition.column,
-          sourceSnippet: node.text.slice(0, 500),
+          sourceSnippet: node.text.slice(0, 1500),
         });
 
         const body = node.childForFieldName('body');
@@ -324,7 +402,7 @@ class TypeScriptParser extends BaseParser {
                 existingComment: mPreceding ? mPreceding.text : null,
                 nodeStartRow: member.startPosition.row,
                 nodeStartCol: member.startPosition.column,
-                sourceSnippet: member.text.slice(0, 500),
+                sourceSnippet: member.text.slice(0, 1500),
               });
             }
           }
@@ -348,9 +426,13 @@ class TypeScriptParser extends BaseParser {
               const bodyAnalysis = analyzeFunctionBody(bodyNode);
               const precedingComment = findPrecedingComment(startLine);
 
+              const isPascalCase = /^[A-Z][A-Za-z0-9]+$/.test(name);
+              const isReactComponent = isPascalCase && (bodyAnalysis.hasJsx || bodyAnalysis.returnsJsx || bodyAnalysis.hooksUsed.length > 0 || (effectiveNode.text.includes('<') && (effectiveNode.text.includes('/>') || effectiveNode.text.includes('</'))));
+
               symbols.push({
                 name,
-                type: 'arrow_function',
+                type: isReactComponent ? 'component' : 'arrow_function',
+                isReactComponent,
                 exported: isExported,
                 async: isAsync,
                 startLine,
@@ -360,13 +442,16 @@ class TypeScriptParser extends BaseParser {
                 parameters: params,
                 lineCount: endLine - startLine + 1,
                 externalCalls: bodyAnalysis.externalCalls,
+                hooksUsed: bodyAnalysis.hooksUsed,
+                jsxElements: bodyAnalysis.jsxElements,
+                hasJsx: bodyAnalysis.hasJsx,
                 hasErrorHandling: bodyAnalysis.hasErrorHandling,
                 cyclomaticComplexity: bodyAnalysis.cyclomaticComplexity,
                 hasDocumentation: Boolean(precedingComment),
                 existingComment: precedingComment ? precedingComment.text : null,
                 nodeStartRow: effectiveNode.startPosition.row,
                 nodeStartCol: effectiveNode.startPosition.column,
-                sourceSnippet: node.text.slice(0, 500),
+                sourceSnippet: node.text.slice(0, 1500),
               });
             } else if (isConst && isExported) {
               const precedingComment = findPrecedingComment(startLine);
@@ -388,7 +473,7 @@ class TypeScriptParser extends BaseParser {
                 existingComment: precedingComment ? precedingComment.text : null,
                 nodeStartRow: effectiveNode.startPosition.row,
                 nodeStartCol: effectiveNode.startPosition.column,
-                sourceSnippet: node.text.slice(0, 500),
+                sourceSnippet: node.text.slice(0, 1500),
               });
             }
           }
@@ -430,10 +515,32 @@ class TypeScriptParser extends BaseParser {
 
     const tree = this.parse(code);
     if (tree.rootNode.hasError) {
-      return {
-        valid: false,
-        errors: ['Syntax error detected in TypeScript AST structure'],
+      const realErrors = [];
+      const collectErrors = (node) => {
+        if (node.type === 'ERROR' || node.isMissing) {
+          const isBenignJsxText =
+            (node.parent?.type === 'jsx_element' || node.parent?.type === 'jsx_fragment') &&
+            (node.text?.trim()?.startsWith('&') || node.text?.trim()?.startsWith('>') || node.text?.trim()?.startsWith('}'));
+
+          if (!isBenignJsxText) {
+            const line = node.startPosition.row + 1;
+            const col = node.startPosition.column + 1;
+            const snippet = node.text ? node.text.slice(0, 30).trim() : 'unexpected token';
+            realErrors.push(`Line ${line}, Col ${col}: unexpected syntax near "${snippet}"`);
+          }
+        }
+        for (let i = 0; i < node.childCount; i++) {
+          collectErrors(node.child(i));
+        }
       };
+      collectErrors(tree.rootNode);
+
+      if (realErrors.length > 0) {
+        return {
+          valid: false,
+          errors: realErrors.slice(0, 3),
+        };
+      }
     }
 
     return { valid: true, errors: [] };

@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import CodeEditor from '../components/CodeEditor'
 import DiffViewer from '../components/DiffViewer'
 import FileUploader from '../components/FileUploader'
 import LanguageSelector from '../components/LanguageSelector'
 import AnalysisSummary from '../components/AnalysisSummary'
 import LoadingState from '../components/LoadingState'
+import SettingsModal from '../components/SettingsModal'
 import { analyzeCode } from '../services/api'
 
 const EXT_TO_LANG = {
@@ -16,7 +17,11 @@ const EXT_TO_LANG = {
   py: 'python',
 }
 
-const SAMPLE_CODE = `export async function processPayment(orderId, amount) {
+const SAMPLES = {
+  javascript: {
+    filename: 'payment.js',
+    language: 'javascript',
+    code: `export async function processPayment(orderId, amount) {
     const user = await getUser(orderId);
 
     if (!user) {
@@ -39,24 +44,110 @@ function calculateTotal(amount) {
 function getId() {
     return 101;
 }
-`
+`,
+  },
+  python: {
+    filename: 'data_pipeline.py',
+    language: 'python',
+    code: `import json
+import logging
+
+class MetricsAggregator:
+    def __init__(self, service_name):
+        self.service_name = service_name
+        self.metrics = []
+
+    def record_metric(self, name, value, tags=None):
+        payload = {"name": name, "value": value, "tags": tags or {}}
+        self.metrics.append(payload)
+
+def parse_events(event_stream):
+    results = []
+    for raw in event_stream:
+        try:
+            item = json.loads(raw)
+            if item.get("status") == "SUCCESS":
+                results.append(item)
+        except Exception as e:
+            logging.warning(f"Failed to parse item: {e}")
+    return results
+`,
+  },
+  typescript: {
+    filename: 'orderService.ts',
+    language: 'typescript',
+    code: `interface OrderItem {
+    id: string;
+    price: number;
+    quantity: number;
+}
+
+export async function submitOrder(userId: string, items: OrderItem[]): Promise<string> {
+    if (!items || items.length === 0) {
+        throw new Error("Order cannot be empty");
+    }
+
+    const subtotal = calculateSubtotal(items);
+    const trackingId = await paymentGateway.charge({ userId, amount: subtotal });
+
+    return trackingId;
+}
+
+function calculateSubtotal(items: OrderItem[]): number {
+    return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+}
+`,
+  },
+}
 
 export default function Home() {
-  const [code, setCode] = useState(SAMPLE_CODE)
-  const [filename, setFilename] = useState('payment.js')
-  const [language, setLanguage] = useState('javascript')
+  const [code, setCode] = useState(SAMPLES.javascript.code)
+  const [filename, setFilename] = useState(SAMPLES.javascript.filename)
+  const [language, setLanguage] = useState(SAMPLES.javascript.language)
   const [mode, setMode] = useState('recommended')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Load custom settings from localStorage
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('codecomment_settings')
+      return saved ? JSON.parse(saved) : { apiKey: '', baseURL: '', model: '', engineMode: 'auto' }
+    } catch {
+      return { apiKey: '', baseURL: '', model: '', engineMode: 'auto' }
+    }
+  })
 
   const diffViewerRef = useRef(null)
+
+  function handleSaveSettings(newSettings) {
+    setSettings(newSettings)
+    try {
+      localStorage.setItem('codecomment_settings', JSON.stringify(newSettings))
+      showToast('Settings saved!')
+    } catch {
+      // localStorage failed
+    }
+  }
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
   }, [])
+
+  function loadSample(key) {
+    const sample = SAMPLES[key]
+    if (!sample) return
+    setCode(sample.code)
+    setFilename(sample.filename)
+    setLanguage(sample.language)
+    setResult(null)
+    setError(null)
+    showToast(`Loaded ${key.toUpperCase()} sample`)
+  }
 
   function handleFileLoaded({ filename: fname, content }) {
     setCode(content)
@@ -68,9 +159,10 @@ export default function Home() {
     if (ext && EXT_TO_LANG[ext]) {
       setLanguage(EXT_TO_LANG[ext])
     }
+    showToast(`Loaded ${fname}`)
   }
 
-  async function handleAnalyze() {
+  async function handleAnalyze(forceAstOnly = false) {
     if (!code.trim()) {
       setError('Please paste or upload some code first.')
       return
@@ -80,24 +172,41 @@ export default function Home() {
     setResult(null)
     setError(null)
 
+    // Determine credentials: if AST-only mode is selected, pass empty key
+    const isAstOnly = forceAstOnly || settings.engineMode === 'ast-only'
+    const apiKey = isAstOnly ? 'your_key_here' : settings.apiKey
+    const baseURL = isAstOnly ? '' : settings.baseURL
+    const model = isAstOnly ? '' : settings.model
+
     try {
       const data = await analyzeCode({
         filename,
         language,
         code,
         mode,
+        apiKey,
+        baseURL,
+        model,
       })
 
       if (data.success) {
         setResult(data)
+        if (data.notice) {
+          showToast('Code documented successfully via Safe AST Engine!')
+        } else {
+          showToast('Documentation generated successfully!')
+        }
       } else {
         setError(data.error || 'Analysis failed. Please try again.')
       }
     } catch (err) {
-      const msg =
+      let msg =
         err.response?.data?.error ||
         err.message ||
         'Unable to connect to the server.'
+      if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
+        msg = 'The analysis request timed out. Try using Standard or Minimal mode.'
+      }
       setError(msg)
     } finally {
       setLoading(false)
@@ -142,95 +251,176 @@ export default function Home() {
     }
   }
 
+  // Keyboard shortcut: Ctrl + Enter to document
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!loading && code.trim() && !result) {
+          e.preventDefault()
+          handleAnalyze()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [loading, code, result])
+
   return (
     <div className="min-h-screen flex flex-col w-full bg-[var(--bg-primary)]">
-      <header className="w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
-            <span className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">
-              CodeComment AI
-            </span>
+      {/* Top Header */}
+      <header className="w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-3">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[var(--accent-gradient)] flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+            </div>
+            <div>
+              <span className="font-bold text-sm sm:text-base text-[var(--text-primary)] tracking-tight">
+                CodeComment <span className="text-indigo-400 font-extrabold">AI</span>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-[var(--text-muted)] hidden sm:inline">
-              Safe AST Engine
-            </span>
+          {/* Quick Engine Status & Settings */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Active Engine Badge */}
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] font-medium text-[var(--text-secondary)] hidden xs:flex sm:flex"
+              title="Documentation Engine Status"
+            >
+              <span className={`w-2 h-2 rounded-full ${settings.engineMode === 'ast-only' ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}`} />
+              <span className="hidden sm:inline">
+                {settings.engineMode === 'ast-only' ? 'Safe AST Engine (Offline)' : 'Safe AST + AI'}
+              </span>
+              <span className="sm:hidden">
+                {settings.engineMode === 'ast-only' ? 'AST' : 'AST+AI'}
+              </span>
+            </div>
+
+            {/* Quick Sample Selector */}
+            <div className="hidden md:flex items-center gap-1 bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 rounded-lg text-xs">
+              <span className="text-[11px] text-[var(--text-muted)] px-2">Samples:</span>
+              <button
+                type="button"
+                onClick={() => loadSample('javascript')}
+                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
+              >
+                JS
+              </button>
+              <button
+                type="button"
+                onClick={() => loadSample('python')}
+                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
+              >
+                Python
+              </button>
+              <button
+                type="button"
+                onClick={() => loadSample('typescript')}
+                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
+              >
+                TS
+              </button>
+            </div>
+
+            {/* Settings Gear Button */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="btn-secondary h-9 px-3 text-xs flex items-center gap-1.5"
+              title="Configure API key, model, or engine"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--text-secondary)]">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <span className="hidden sm:inline">Settings</span>
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5">
+        {/* Input & Editor View */}
         {!result && !loading && (
-          <div className="clean-card p-5 sm:p-6 flex flex-col gap-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
-              <div className="sm:col-span-1 lg:col-span-3 flex flex-col gap-1.5">
-                <label htmlFor="filename-input" className="text-xs font-medium text-[var(--text-secondary)]">
+          <div className="clean-card p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 w-full">
+            {/* Top Toolbar Grid: 2x2 on mobile, 4-col on tablet & desktop */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 items-end w-full">
+              {/* 1. Filename */}
+              <div className="flex flex-col gap-1 w-full">
+                <label htmlFor="filename-input" className="text-xs font-semibold text-[var(--text-secondary)]">
                   Filename
                 </label>
                 <input
                   id="filename-input"
                   type="text"
-                  className="input-field"
+                  className="input-field ctrl-h"
                   value={filename}
                   onChange={(e) => setFilename(e.target.value)}
                   placeholder="e.g. payment.js"
                 />
               </div>
 
-              <div className="sm:col-span-1 lg:col-span-3 flex flex-col gap-1.5">
-                <label htmlFor="language-selector" className="text-xs font-medium text-[var(--text-secondary)]">
+              {/* 2. Language */}
+              <div className="flex flex-col gap-1 w-full">
+                <label htmlFor="language-selector" className="text-xs font-semibold text-[var(--text-secondary)]">
                   Language
                 </label>
                 <LanguageSelector value={language} onChange={setLanguage} />
               </div>
 
-              <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--text-secondary)]">
+              {/* 3. Upload File */}
+              <div className="flex flex-col gap-1 w-full">
+                <label className="text-xs font-semibold text-[var(--text-secondary)]">
                   Upload Source
                 </label>
                 <FileUploader onFileLoaded={handleFileLoaded} />
               </div>
 
-              <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-[var(--text-secondary)]">
-                  Mode
+              {/* 4. Documentation Mode Pills */}
+              <div className="flex flex-col gap-1 w-full">
+                <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                  Detail Level
                 </label>
-                <div className="grid grid-cols-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 gap-0.5 text-center">
+                <div className="grid grid-cols-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 ctrl-h items-center text-center">
                   <button
                     type="button"
                     onClick={() => setMode('minimal')}
-                    className={`py-1 rounded text-xs font-medium transition-all ${
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${
                       mode === 'minimal'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
+                    title="Document only critical exported APIs"
                   >
                     Minimal
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('recommended')}
-                    className={`py-1 rounded text-xs font-medium transition-all ${
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${
                       mode === 'recommended'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
+                    title="Recommended balance of main points and public methods"
                   >
                     Standard
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('detailed')}
-                    className={`py-1 rounded text-xs font-medium transition-all ${
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${
                       mode === 'detailed'
-                        ? 'bg-[var(--accent)] text-white'
+                        ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
                     }`}
+                    title="Comprehensive documentation for all logical blocks"
                   >
                     Detailed
                   </button>
@@ -238,53 +428,95 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Monaco Code Editor */}
             <CodeEditor
               code={code}
               onChange={setCode}
               language={language}
+              onClear={() => setCode('')}
             />
 
+            {/* Error Banner with 1-Click AST Fallback Action */}
             {error && (
-              <div className="p-3 rounded-lg bg-[var(--danger-bg)] border border-[var(--danger)]/30 text-xs text-rose-300">
-                {error}
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-300">
+                <div className="flex items-start gap-2.5">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-rose-400 shrink-0 mt-0.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-rose-200">Analysis Error</span>
+                    <span className="leading-relaxed">{error}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAnalyze(true)}
+                  className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 font-medium shrink-0 self-start sm:self-auto transition-colors"
+                >
+                  Document with Safe AST Engine (Offline)
+                </button>
               </div>
             )}
 
+            {/* Bottom Action Row */}
             <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-              <span className="text-xs text-[var(--text-muted)]">
-                AST parser analyzes symbols and safely patches documentation comments.
-              </span>
-              <button
-                id="analyze-button"
-                className="btn-primary w-full sm:w-auto"
-                onClick={handleAnalyze}
-                disabled={loading || !code.trim()}
-              >
-                Document Code
-              </button>
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <span>AST engine identifies codebase architecture &amp; guarantees zero logic modification.</span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  id="analyze-button"
+                  className="btn-primary w-full sm:w-auto text-sm"
+                  onClick={() => handleAnalyze(false)}
+                  disabled={loading || !code.trim()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                  Document Code
+                  <span className="hidden sm:inline text-[11px] font-mono opacity-70 ml-1">
+                    (Ctrl+Enter)
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
+        {/* Loading State */}
         {loading && (
-          <div className="clean-card p-8 sm:p-12 my-auto">
+          <div className="clean-card p-8 sm:p-14 my-auto">
             <LoadingState />
           </div>
         )}
 
+        {/* Documented Result & Diff View */}
         {result && !loading && (
-          <div className="flex flex-col gap-6 w-full">
-            <div className="clean-card p-5 sm:p-6">
+          <div className="flex flex-col gap-5 w-full">
+            {/* Analysis Stats Card */}
+            <div className="clean-card p-4 sm:p-6 w-full">
               <AnalysisSummary result={result} onSelectLine={handleJumpToLine} />
             </div>
 
-            <div className="clean-card p-5 sm:p-6 flex flex-col gap-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  Code Comparison
-                </span>
+            {/* Code Diff Card */}
+            <div className="clean-card p-4 sm:p-6 flex flex-col gap-4 w-full">
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">
+                    Code Comparison
+                  </span>
+                </div>
                 <span className="text-xs text-[var(--text-muted)]">
-                  Original (left) vs Documented (right)
+                  Only docstrings and comments were added. Code logic is 100% untouched.
                 </span>
               </div>
 
@@ -296,27 +528,72 @@ export default function Home() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 w-full">
-              <button id="copy-button" className="btn-secondary w-full sm:w-auto" onClick={handleCopy}>
-                Copy Code
-              </button>
+            {/* Result Action Bar */}
+            <div className="clean-card p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Syntax verified &amp; AST structure identical</span>
+              </div>
 
-              <button id="download-button" className="btn-secondary w-full sm:w-auto" onClick={handleDownload}>
-                Download File
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  id="copy-button"
+                  className="btn-secondary w-full sm:w-auto"
+                  onClick={handleCopy}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  Copy Documented Code
+                </button>
 
-              <button id="reset-button" className="btn-primary w-full sm:w-auto" onClick={handleReset}>
-                New Analysis
-              </button>
+                <button
+                  id="download-button"
+                  className="btn-secondary w-full sm:w-auto"
+                  onClick={handleDownload}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download File
+                </button>
+
+                <button
+                  id="reset-button"
+                  className="btn-primary w-full sm:w-auto"
+                  onClick={handleReset}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  New Analysis
+                </button>
+              </div>
             </div>
           </div>
         )}
       </main>
 
-      <footer className="w-full border-t border-[var(--border-subtle)] py-4 text-center text-xs text-[var(--text-muted)] mt-auto">
-        CodeComment AI · AST-aware safe documentation engine
+      {/* Footer */}
+      <footer className="w-full border-t border-[var(--border-subtle)] py-4 text-center text-xs text-[var(--text-muted)] mt-auto bg-[var(--bg-surface)]">
+        CodeComment AI · AST-aware safe documentation engine · Zero logic modification guarantee
       </footer>
 
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSaveSettings={handleSaveSettings}
+      />
+
+      {/* Toast Notification */}
       {toast && (
         <div className={`toast ${toast.type}`}>
           {toast.message}

@@ -11,7 +11,7 @@ export default function LanguageSelector({ value, onChange, disabled }) {
   return (
     <select
       id="language-selector"
-      className="select-field w-full"
+      className="select-field w-full ctrl-h"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}

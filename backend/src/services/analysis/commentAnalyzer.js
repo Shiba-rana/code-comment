@@ -1,3 +1,5 @@
+const { isGenericBoilerplate } = require('../validation/commentQuality.service');
+
 function assessDocumentationQuality(commentText) {
   if (!commentText || typeof commentText !== 'string') {
     return 'none';
@@ -6,6 +8,11 @@ function assessDocumentationQuality(commentText) {
   const clean = commentText.replace(/^[/*\s#]+|[/*\s]+$/g, '').trim();
   if (clean.length === 0) {
     return 'none';
+  }
+
+  // Generic boilerplate phrases are unacceptable and must be flagged as poor quality
+  if (isGenericBoilerplate(commentText) || isGenericBoilerplate(clean)) {
+    return 'poor';
   }
 
   if (
@@ -68,8 +75,11 @@ function analyzeSymbolComments(symbols, comments) {
       ...symbol,
       hasDocumentation: Boolean(matchedComment),
       documentationQuality: quality,
+      isGenericComment: quality === 'poor',
       existingCommentText: matchedComment ? matchedComment.text : null,
       existingCommentStyle: matchedComment ? matchedComment.style : null,
+      existingCommentStartLine: matchedComment ? matchedComment.startLine : null,
+      existingCommentEndLine: matchedComment ? matchedComment.endLine : null,
     };
   });
 }

@@ -2,6 +2,7 @@ const { requestDocumentationBatch } = require('./aiClient');
 const { validateAIResponse } = require('./responseValidator');
 const { buildBatchContext } = require('../analysis/contextBuilder');
 const { buildBatchUserPrompt } = require('../../prompts/documentation.prompt');
+const { evaluateCommentQuality } = require('../validation/commentQuality.service');
 
 function chunkArray(items, size) {
   const chunks = [];
@@ -36,10 +37,11 @@ async function analyzeCandidateSymbols({
       : process.env.AUTO_APPLY_CONFIDENCE || 0.85
   );
 
-  const batches = chunkArray(symbols, batchSize);
-  const allInstructions = [];
+  let detectedEngine = 'ai';
+  let detectedNotice = null;
 
-  for (const batch of batches) {
+  const batches = chunkArray(symbols, batchSize);
+  const batchPromises = batches.map(async (batch) => {
     const symbolsContext = buildBatchContext(batch, fileMetadata);
     const userPrompt = buildBatchUserPrompt({
       language,
@@ -48,23 +50,71 @@ async function analyzeCandidateSymbols({
       symbolsContext,
     });
 
-    const rawResponse = await requestDocumentationBatch({ userPrompt });
-    const validatedInstructions = validateAIResponse(rawResponse);
+    const rawResult = await requestDocumentationBatch({
+      userPrompt,
+      apiKey: options.apiKey,
+      baseURL: options.baseURL,
+      model: options.model,
+    });
 
-    for (const instruction of validatedInstructions) {
+    const responseText = typeof rawResult === 'string' ? rawResult : (rawResult?.content || '');
+    if (rawResult && typeof rawResult === 'object') {
+      if (rawResult.engineUsed && rawResult.engineUsed !== 'ai') {
+        detectedEngine = rawResult.engineUsed;
+      }
+      if (rawResult.notice) {
+        detectedNotice = rawResult.notice;
+      }
+    }
+
+    const validatedInstructions = validateAIResponse(responseText);
+
+    return validatedInstructions.map((instruction) => {
       const confidence = instruction.confidence || 0.85;
       const confidenceTier = classifyConfidence(confidence);
-      const shouldAutoApply = instruction.decision === 'DOCUMENT' && confidence >= autoApplyThreshold;
 
-      allInstructions.push({
+      if (instruction.decision === 'DOCUMENT') {
+        const matchingSymbol = batch.find((s) => s.name === instruction.target?.name);
+        const qualityResult = evaluateCommentQuality(
+          instruction.documentation?.text,
+          matchingSymbol || { name: instruction.target?.name, type: instruction.target?.type },
+          options
+        );
+
+        if (!qualityResult.passed) {
+          return {
+            ...instruction,
+            decision: 'SKIP',
+            autoApply: false,
+            confidenceTier: 'low',
+            qualityScore: qualityResult.totalScore,
+            rejected: true,
+            reason: `Rejected by Quality Evaluator: ${qualityResult.violations.join('; ')}`,
+          };
+        }
+
+        return {
+          ...instruction,
+          confidenceTier,
+          autoApply: confidence >= autoApplyThreshold,
+          replaceExisting: Boolean(instruction.replaceExisting || matchingSymbol?.isGenericComment),
+          qualityScore: qualityResult.totalScore,
+        };
+      }
+
+      return {
         ...instruction,
         confidenceTier,
-        autoApply: shouldAutoApply,
-      });
-    }
-  }
+        autoApply: false,
+      };
+    });
+  });
 
-  return allInstructions;
+  const batchResults = await Promise.all(batchPromises);
+  const flattened = batchResults.flat();
+  flattened.engineUsed = detectedEngine;
+  flattened.notice = detectedNotice;
+  return flattened;
 }
 
 module.exports = {

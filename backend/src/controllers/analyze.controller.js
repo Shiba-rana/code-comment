@@ -2,7 +2,7 @@ const codeAnalyzerService = require('../services/codeAnalyzer.service');
 
 async function analyzeCode(req, res) {
   try {
-    const { filename, language, code, mode, threshold, autoApplyConfidence } = req.body;
+    const { filename, language, code, mode, threshold, autoApplyConfidence, apiKey, baseURL, model } = req.body;
 
     const result = await codeAnalyzerService.analyzeCode({
       filename,
@@ -11,6 +11,9 @@ async function analyzeCode(req, res) {
       mode,
       threshold,
       autoApplyConfidence,
+      apiKey,
+      baseURL,
+      model,
     });
 
     return res.status(200).json(result);

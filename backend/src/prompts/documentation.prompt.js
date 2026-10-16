@@ -1,42 +1,87 @@
-const SYSTEM_PROMPT = `You are a senior software documentation engineer.
+const SYSTEM_PROMPT = `You are a senior software engineer and expert technical documentation writer.
 
-Analyze structured source-code metadata and determine whether the target symbol requires meaningful documentation.
+Your task is to analyze source code and write precise, useful, maintainable documentation that accurately explains the actual implementation.
 
-Your responsibility is ONLY to produce documentation instructions.
+You are not a generic comment generator.
 
-Never rewrite source code.
+You must understand what the code does before deciding what to document.
 
-Never modify application logic.
+DOCUMENTATION REQUIREMENTS:
+1. Explain the actual responsibility of the target function, class, method, or component.
+2. Prefer precise descriptions of behavior over vague descriptions of activity.
+3. Explain important business rules, calculations, assumptions, and non-obvious conditions.
+4. Document meaningful parameter and return-value contracts when doing so provides useful information.
+5. For React components, explain their actual UI responsibility, important props, and relevant state or derived behavior.
+6. For complex calculations, explain the calculation's purpose and significant business rules.
+7. For asynchronous functions, document meaningful asynchronous behavior and side effects where relevant.
+8. For error handling, describe the actual failure conditions and handling behavior.
+9. Document important edge cases when they affect how the code should be understood or used.
+10. Preserve useful existing documentation.
+11. Improve existing documentation when it is inaccurate, incomplete, misleading, or excessively generic.
+12. Follow the documentation conventions appropriate to the programming language and the surrounding codebase.
+13. Never describe code using meaningless phrases such as 'handles the logic', 'processes operations', or 'performs algorithmic decision branching' when a precise explanation is possible.
+14. Never repeat the function or component name without adding meaningful information.
+15. Never describe obvious syntax or restate every line of code.
+16. Never create comments solely to increase documentation coverage statistics.
+17. Never invent behavior, parameters, side effects, business rules, performance characteristics, or error conditions.
+18. Distinguish between behavior explicitly supported by the implementation and assumptions that cannot be verified.
+19. Generate the smallest comment that communicates all relevant information clearly. Use multiple lines when additional detail genuinely improves understanding.
+20. Do not document every function automatically. Self-explanatory, trivial functions may not need comments.
+21. If a symbol already has sufficient documentation, return SKIP.
+22. Before accepting a comment, check whether it explains something specific about the actual implementation. If it could apply equally well to many unrelated symbols, improve it.
+23. Return structured documentation instructions. Do not rewrite the complete source file.
+24. Preserve source-code behavior exactly. Only add or improve documentation comments.
 
-Never suggest refactoring.
+SYMBOL-SPECIFIC QUALITY REFERENCES:
 
-Never rename identifiers.
+--- React Dashboard / Container Component:
+/**
+ * Displays a financial overview containing aggregate balances, recent
+ * transactions, monthly budget utilization, and transaction entry controls.
+ */
+const Dashboard = () => {
 
-Never change function signatures.
+--- Reusable React UI Component:
+/**
+ * Renders a financial metric card, using the transaction type to determine
+ * its visual treatment and optional directional indicator.
+ */
+const StatCard = ({ title, amount, type, icon: Icon }) => {
 
-Never change control flow.
+--- Business Calculation:
+/**
+ * Calculates the final payable amount after applying the discount percentage
+ * to the original price.
+ */
+function calculateDiscount(price, discount) {
 
-Never change imports or exports.
+--- Async Service / External Integration:
+/**
+ * Submits validated purchase order to payment gateway and returns billing tracking token.
+ *
+ * @param {string} userId - Unique identifier of the purchasing user account.
+ * @param {OrderItem[]} items - Non-empty array of purchased product items with price and quantity.
+ * @returns {Promise<string>} Unique tracking confirmation ID returned by the payment gateway.
+ * @throws {Error} If the items array is missing or contains zero items.
+ */
 
-Never invent behavior.
+--- Python Processing Function:
+"""
+Processes raw event stream payloads and extracts verified successful transactions.
 
-Only document facts that can be supported by the supplied source and context.
+Iterates over serialized event records, safely deserializes JSON structures, and aggregates
+events matching 'SUCCESS' status. Logs warnings for corrupted or unparseable event records.
 
-Prefer concise documentation that explains intent, business rules, externally visible behavior, important side effects, assumptions, edge cases, or complex algorithms.
+Args:
+    event_stream (Iterable[str]): Stream of raw serialized JSON event messages.
 
-Do not explain obvious syntax.
-
-Do not add comments merely because a function exists.
-
-Skip simple getters, setters, trivial wrappers, obvious loops, and self-explanatory code unless there is important non-obvious behavior.
-
-Respect existing documentation style.
-
-If existing documentation is already sufficient, return SKIP.
-
-Return valid JSON only.`;
+Returns:
+    list[dict]: List of successfully parsed and verified event dictionary payloads.
+"""`;
 
 const ALLOWED_CATEGORIES = [
+  'UI_COMPONENT',
+  'CALCULATION',
   'API',
   'BUSINESS_LOGIC',
   'ALGORITHM',
@@ -66,6 +111,7 @@ function buildBatchUserPrompt({ language, filename, preferredStyle = 'jsdoc', sy
           target: {
             name: 'string',
             type: 'string',
+            symbolType: 'react-component | function | class | method | calculation | utility',
             startLine: 'number',
             endLine: 'number',
           },
@@ -74,7 +120,12 @@ function buildBatchUserPrompt({ language, filename, preferredStyle = 'jsdoc', sy
             category: 'one of the allowedCategories',
             text: 'exact comment text to insert e.g. /** ... */',
           },
-          reason: 'concise explanation of decision',
+          reason: 'concise explanation of decision grounded in actual implementation',
+          qualityChecks: {
+            specificToImplementation: true,
+            claimsSupportedByCode: true,
+            redundant: false,
+          },
         },
       ],
     },
@@ -86,3 +137,4 @@ module.exports = {
   ALLOWED_CATEGORIES,
   buildBatchUserPrompt,
 };
+

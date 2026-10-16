@@ -3,6 +3,7 @@ const { runScoringTests } = require('./analysis/scoring.test');
 const { runPatchTests } = require('./patch/patch.test');
 const { runValidationTests } = require('./validation/validation.test');
 const { runEndToEndTests } = require('./e2e/cases.test');
+const { runQualityRegressionTests } = require('./quality/quality.test');
 
 async function main() {
   console.log('Running Phase 2 Test Suite...\n');
@@ -28,7 +29,11 @@ async function main() {
     await runEndToEndTests();
     console.log('   PASSED');
 
-    console.log('\nAll Phase 2 tests passed successfully!');
+    console.log('6. Testing Comment Quality & Specificity (Cases 1-10)...');
+    await runQualityRegressionTests();
+    console.log('   PASSED');
+
+    console.log('\nAll Phase 2 & Quality Regression tests passed successfully!');
     process.exit(0);
   } catch (err) {
     console.error('\nTest Suite Failed:');

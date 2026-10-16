@@ -1,4 +1,5 @@
 const { findMatchingSymbol, determineInsertionPoint } = require('./insertionPoint.service');
+const { isGenericBoilerplate } = require('../validation/commentQuality.service');
 
 function formatCommentText(rawText, indent = '') {
   if (!rawText) return '';
@@ -14,25 +15,67 @@ function formatCommentText(rawText, indent = '') {
       if (trimmed === '*/') {
         return `${indent} */`;
       }
-      return `${indent}${trimmed}`;
+      const leadingSpaces = (line.match(/^(\s*)/) || [''])[0];
+      return `${indent}${leadingSpaces}${trimmed}`;
     })
     .join('\n');
 }
 
-function hasPrecedingComment(lines, lineIndex) {
-  let prevIdx = lineIndex - 1;
-  while (prevIdx >= 0 && lines[prevIdx].trim() === '') {
-    prevIdx--;
+function findPrecedingCommentRange(lines, lineIndex) {
+  let endIdx = lineIndex - 1;
+  while (endIdx >= 0 && lines[endIdx].trim() === '') {
+    endIdx--;
   }
-  if (prevIdx < 0) return false;
+  if (endIdx < 0) return null;
 
-  const prevLine = lines[prevIdx].trim();
-  return (
-    prevLine.startsWith('//') ||
-    prevLine.startsWith('/*') ||
-    prevLine.startsWith('*') ||
-    prevLine.endsWith('*/')
-  );
+  const endLine = lines[endIdx].trim();
+  const isComment =
+    endLine.startsWith('//') ||
+    endLine.startsWith('/*') ||
+    endLine.startsWith('*') ||
+    endLine.endsWith('*/') ||
+    endLine.startsWith('#') ||
+    endLine.endsWith('"""') ||
+    endLine.endsWith("'''");
+  if (!isComment) return null;
+
+  let startIdx = endIdx;
+  if (endLine.endsWith('*/') || endLine.endsWith('"""') || endLine.endsWith("'''")) {
+    const isTriple = endLine.endsWith('"""') || endLine.endsWith("'''");
+    const quote = isTriple ? endLine.slice(-3) : null;
+    while (startIdx > 0) {
+      const line = lines[startIdx].trim();
+      if (isTriple) {
+        if (startIdx < endIdx && (line.startsWith(quote) || line.includes(quote))) {
+          break;
+        }
+      } else {
+        if (line.startsWith('/*')) {
+          break;
+        }
+      }
+      startIdx--;
+    }
+  } else {
+    const prefix = endLine.startsWith('//') ? '//' : endLine.startsWith('#') ? '#' : null;
+    if (prefix) {
+      while (startIdx > 0 && lines[startIdx - 1].trim().startsWith(prefix)) {
+        startIdx--;
+      }
+    }
+  }
+
+  const commentText = lines.slice(startIdx, endIdx + 1).join('\n');
+  return {
+    startLineIndex: startIdx,
+    endLineIndex: endIdx,
+    deleteCount: endIdx - startIdx + 1,
+    commentText,
+  };
+}
+
+function hasPrecedingComment(lines, lineIndex) {
+  return Boolean(findPrecedingCommentRange(lines, lineIndex));
 }
 
 function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
@@ -77,7 +120,17 @@ function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
       continue;
     }
 
-    if (symbol.hasDocumentation) {
+    const loc = determineInsertionPoint({ symbol, code: originalCode, parser });
+    if (!loc) continue;
+
+    const precedingRange = findPrecedingCommentRange(lines, loc.lineIndex);
+    const isPoorOrGenericDoc =
+      symbol.isGenericComment ||
+      symbol.documentationQuality === 'poor' ||
+      Boolean(inst.replaceExisting) ||
+      Boolean(precedingRange && isGenericBoilerplate(precedingRange.commentText));
+
+    if (symbol.hasDocumentation && !isPoorOrGenericDoc) {
       skippedChanges.push({
         symbol: symbol.name,
         category: inst.documentation?.category || 'GENERAL',
@@ -88,10 +141,7 @@ function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
       continue;
     }
 
-    const loc = determineInsertionPoint({ symbol, code: originalCode, parser });
-    if (!loc) continue;
-
-    if (hasPrecedingComment(lines, loc.lineIndex)) {
+    if (precedingRange && !isPoorOrGenericDoc) {
       skippedChanges.push({
         symbol: symbol.name,
         category: inst.documentation?.category || 'GENERAL',
@@ -107,14 +157,28 @@ function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
       loc.indent
     );
 
+    const patchLineIndex =
+      isPoorOrGenericDoc && precedingRange
+        ? precedingRange.startLineIndex
+        : loc.lineIndex;
+
+    const deleteCount =
+      isPoorOrGenericDoc && precedingRange
+        ? precedingRange.deleteCount
+        : 0;
+
     patchCandidates.push({
-      lineIndex: loc.lineIndex,
+      lineIndex: patchLineIndex,
+      deleteCount,
       targetLineNumber: loc.targetLineNumber,
       formattedComment,
       symbolName: symbol.name,
       category: inst.documentation?.category || 'GENERAL',
-      reason: inst.reason || 'Documentation added',
+      reason: inst.reason || (isPoorOrGenericDoc ? 'Upgraded generic boilerplate documentation' : 'Documentation added'),
       confidence: inst.confidence,
+      qualityScore: inst.qualityScore || 9,
+      isMainPoint: Boolean(symbol.isMainPoint),
+      mainPointType: symbol.mainPointType || null,
     });
   }
 
@@ -132,11 +196,13 @@ function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
         reason: 'Duplicate patch for same symbol prevented',
         confidence: patch.confidence,
         applied: false,
+        isMainPoint: patch.isMainPoint,
+        mainPointType: patch.mainPointType,
       });
       continue;
     }
 
-    workingLines.splice(patch.lineIndex, 0, patch.formattedComment);
+    workingLines.splice(patch.lineIndex, patch.deleteCount || 0, patch.formattedComment);
 
     appliedChanges.push({
       symbol: patch.symbolName,
@@ -144,8 +210,11 @@ function applyCommentPatches({ originalCode, instructions, symbols, parser }) {
       line: patch.targetLineNumber,
       reason: patch.reason,
       confidence: patch.confidence,
+      qualityScore: patch.qualityScore,
       applied: true,
       text: patch.formattedComment,
+      isMainPoint: patch.isMainPoint,
+      mainPointType: patch.mainPointType,
     });
   }
 

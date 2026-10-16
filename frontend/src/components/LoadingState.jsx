@@ -42,7 +42,7 @@ export default function LoadingState() {
       </div>
 
       <p className="text-xs text-[var(--text-muted)]">
-        This may take 10–30 seconds depending on code size.
+        AST analysis in progress. Large files may take 30–60 seconds.
       </p>
     </div>
   )
