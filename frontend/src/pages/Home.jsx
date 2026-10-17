@@ -285,62 +285,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Quick Engine Status & Settings */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Active Engine Badge */}
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] font-medium text-[var(--text-secondary)] hidden xs:flex sm:flex"
-              title="Documentation Engine Status"
-            >
-              <span className={`w-2 h-2 rounded-full ${settings.engineMode === 'ast-only' ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}`} />
-              <span className="hidden sm:inline">
-                {settings.engineMode === 'ast-only' ? 'Safe AST Engine (Offline)' : 'Safe AST + AI'}
-              </span>
-              <span className="sm:hidden">
-                {settings.engineMode === 'ast-only' ? 'AST' : 'AST+AI'}
-              </span>
-            </div>
-
-            {/* Quick Sample Selector */}
-            <div className="hidden md:flex items-center gap-1 bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 rounded-lg text-xs">
-              <span className="text-[11px] text-[var(--text-muted)] px-2">Samples:</span>
-              <button
-                type="button"
-                onClick={() => loadSample('javascript')}
-                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
-              >
-                JS
-              </button>
-              <button
-                type="button"
-                onClick={() => loadSample('python')}
-                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
-              >
-                Python
-              </button>
-              <button
-                type="button"
-                onClick={() => loadSample('typescript')}
-                className="px-2 py-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-white transition-colors"
-              >
-                TS
-              </button>
-            </div>
-
-            {/* Settings Gear Button */}
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="btn-secondary h-9 px-3 text-xs flex items-center gap-1.5"
-              title="Configure API key, model, or engine"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--text-secondary)]">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-          </div>
         </div>
       </header>
 
@@ -515,9 +459,7 @@ export default function Home() {
                     Code Comparison
                   </span>
                 </div>
-                <span className="text-xs text-[var(--text-muted)]">
-                  Only docstrings and comments were added. Code logic is 100% untouched.
-                </span>
+                
               </div>
 
               <DiffViewer
@@ -579,11 +521,6 @@ export default function Home() {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="w-full border-t border-[var(--border-subtle)] py-4 text-center text-xs text-[var(--text-muted)] mt-auto bg-[var(--bg-surface)]">
-        CodeComment AI · AST-aware safe documentation engine · Zero logic modification guarantee
-      </footer>
 
       {/* Settings Modal */}
       <SettingsModal

@@ -17,17 +17,9 @@ export default function AnalysisSummary({ result, onSelectLine }) {
       {/* Overview Header */}
       <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-2.5">
-          <span className={`w-2 h-2 rounded-full ${isFallback ? 'bg-amber-400' : 'bg-[var(--success)]'}`} />
           <h2 className="text-sm sm:text-base font-semibold text-[var(--text-primary)]">
             Analysis Overview
           </h2>
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-            isFallback
-              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-              : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-          }`}>
-            {result.engineUsed === 'ai' ? 'AI AST Pipeline' : 'Safe AST Engine'}
-          </span>
         </div>
 
         <div className="flex items-center gap-2">
