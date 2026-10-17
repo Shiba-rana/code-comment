@@ -4,6 +4,9 @@
   "description": "CodeComment AI - Enterprise-grade automated code documentation engine",
   "private": true,
   "scripts": {
+    "start": "npm --prefix backend start",
+    "build": "npm --prefix backend install --legacy-peer-deps",
+    "postinstall": "npm --prefix backend install --legacy-peer-deps",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:frontend": "npm --prefix frontend run build",
