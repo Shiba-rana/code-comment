@@ -10,7 +10,7 @@ services:
     rootDir: backend
     plan: free
     region: oregon # or ohio, frankfurt, singapore
-    buildCommand: npm install
+    buildCommand: npm install --legacy-peer-deps
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
