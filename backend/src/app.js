@@ -81,6 +81,7 @@ app.use(
 app.use(express.json({ limit: process.env.MAX_BODY_SIZE || '1mb' }));
 
 app.use('/api', analyzeRoutes);
+app.use('/', analyzeRoutes);
 
 // 404 handler for unknown routes
 app.use((req, res) => {

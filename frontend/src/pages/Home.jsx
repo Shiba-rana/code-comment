@@ -197,19 +197,25 @@ export default function Home() {
           showToast('Documentation generated successfully!')
         }
       } else {
-        setError(data.error || 'Analysis failed. Please try again.')
+        const rawErr = data.error
+        setError(typeof rawErr === 'string' ? rawErr : (rawErr?.message || JSON.stringify(rawErr) || 'Analysis failed. Please try again.'))
       }
     } catch (err) {
-      let msg =
+      const rawError =
         err.response?.data?.error ||
+        err.response?.data?.message ||
         err.message ||
         'Unable to connect to the server.'
+      let msg = typeof rawError === 'string'
+        ? rawError
+        : (rawError?.message || JSON.stringify(rawError))
+
       if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
         msg = 'The analysis request timed out. If running on Render free tier, the backend may take up to 50s to wake up from sleep. Try again or use the offline Safe AST Engine.'
       } else if (err.message === 'Network Error' || !err.response) {
         msg = 'Unable to reach the backend server. If using Render free tier, the service may be spinning up from idle (~40s), or check your VITE_API_URL / CORS settings. You can also click below to document offline.'
       }
-      setError(msg)
+      setError(String(msg))
     } finally {
       setLoading(false)
     }
@@ -356,11 +362,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setMode('minimal')}
-                    className={`h-full rounded-lg text-xs font-medium transition-all ${
-                      mode === 'minimal'
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${mode === 'minimal'
                         ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
-                    }`}
+                      }`}
                     title="Document only critical exported APIs"
                   >
                     Minimal
@@ -368,11 +373,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setMode('recommended')}
-                    className={`h-full rounded-lg text-xs font-medium transition-all ${
-                      mode === 'recommended'
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${mode === 'recommended'
                         ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
-                    }`}
+                      }`}
                     title="Recommended balance of main points and public methods"
                   >
                     Standard
@@ -380,11 +384,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setMode('detailed')}
-                    className={`h-full rounded-lg text-xs font-medium transition-all ${
-                      mode === 'detailed'
+                    className={`h-full rounded-lg text-xs font-medium transition-all ${mode === 'detailed'
                         ? 'bg-[var(--accent)] text-white shadow-sm'
                         : 'text-[var(--text-secondary)] hover:text-white'
-                    }`}
+                      }`}
                     title="Comprehensive documentation for all logical blocks"
                   >
                     Detailed
@@ -412,7 +415,9 @@ export default function Home() {
                   </svg>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-semibold text-rose-200">Analysis Error</span>
-                    <span className="leading-relaxed">{error}</span>
+                    <span className="leading-relaxed">
+                      {typeof error === 'string' ? error : (error?.message || JSON.stringify(error))}
+                    </span>
                   </div>
                 </div>
 
@@ -480,7 +485,7 @@ export default function Home() {
                     Code Comparison
                   </span>
                 </div>
-                
+
               </div>
 
               <DiffViewer

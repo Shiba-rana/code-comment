@@ -20,7 +20,7 @@ services:
       - key: PORT
         value: 10000
       - key: CORS_ORIGIN
-        value: "*" # Replace with your Vercel URL in production (e.g. https://your-app.vercel.app)
+        value: "https://code-comment-ai.vercel.app,http://localhost:5173,*"
       - key: OPENAI_API_KEY
         sync: false # Set securely in the Render Dashboard
       - key: OPENAI_BASE_URL
