@@ -57,6 +57,7 @@ const healthHandler = (_req, res) => {
 
 app.get('/', healthHandler);
 app.get('/health', healthHandler);
+app.get('/healthz', healthHandler);
 app.get('/api/health', healthHandler);
 
 // Configurable Rate Limiting for API routes

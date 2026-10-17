@@ -42,11 +42,15 @@ async function runHttpTests() {
     assert.strictEqual(rootRes.status, 200);
     assert.strictEqual(rootRes.body.status, 'ok');
 
-    // 2. /health endpoint for Render
+    // 2. /health & /healthz endpoint for Render
     const healthRes = await makeRequest(server, '/health');
     assert.strictEqual(healthRes.status, 200);
     assert.strictEqual(healthRes.body.status, 'ok');
     assert.ok(typeof healthRes.body.uptime === 'number');
+
+    const healthzRes = await makeRequest(server, '/healthz');
+    assert.strictEqual(healthzRes.status, 200);
+    assert.strictEqual(healthzRes.body.status, 'ok');
 
     // 3. /api/health endpoint
     const apiHealthRes = await makeRequest(server, '/api/health');
