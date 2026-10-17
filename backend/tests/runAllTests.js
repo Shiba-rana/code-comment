@@ -33,7 +33,12 @@ async function main() {
     await runQualityRegressionTests();
     console.log('   PASSED');
 
-    console.log('\nAll Phase 2 & Quality Regression tests passed successfully!');
+    console.log('7. Testing HTTP Endpoints, Health Checks & CORS...');
+    const { runHttpTests } = require('./e2e/http.test');
+    await runHttpTests();
+    console.log('   PASSED');
+
+    console.log('\nAll Production & Regression tests passed successfully!');
     process.exit(0);
   } catch (err) {
     console.error('\nTest Suite Failed:');

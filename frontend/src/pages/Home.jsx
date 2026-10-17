@@ -205,7 +205,9 @@ export default function Home() {
         err.message ||
         'Unable to connect to the server.'
       if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
-        msg = 'The analysis request timed out. Try using Standard or Minimal mode.'
+        msg = 'The analysis request timed out. If running on Render free tier, the backend may take up to 50s to wake up from sleep. Try again or use the offline Safe AST Engine.'
+      } else if (err.message === 'Network Error' || !err.response) {
+        msg = 'Unable to reach the backend server. If using Render free tier, the service may be spinning up from idle (~40s), or check your VITE_API_URL / CORS settings. You can also click below to document offline.'
       }
       setError(msg)
     } finally {
@@ -285,6 +287,25 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Right Header Actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              id="header-settings-btn"
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] transition-all shadow-xs cursor-pointer"
+              title="Open Settings"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <span>Settings</span>
+              {settings.engineMode === 'ast-only' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Offline AST Mode Active" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 

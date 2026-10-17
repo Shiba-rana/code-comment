@@ -1,0 +1,25 @@
+{
+  "name": "codecomment-ai",
+  "version": "1.0.0",
+  "description": "CodeComment AI - Enterprise-grade automated code documentation engine",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend start",
+    "test:backend": "npm --prefix backend test",
+    "test": "npm --prefix backend test"
+  },
+  "keywords": [
+    "code-documentation",
+    "ast",
+    "ai",
+    "developer-tools",
+    "react",
+    "vite",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC"
+}
