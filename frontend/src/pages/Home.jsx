@@ -276,10 +276,20 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col w-full bg-[var(--bg-primary)]">
       {/* Top Header */}
-      <header className="w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-3">
+      <header
+        id="navbar"
+        className="w-full border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 backdrop-blur-md sticky top-0 z-40"
+      >
+        <div
+          id="navbar-inner"
+          className="max-w-7xl mx-auto flex items-center justify-between gap-3"
+        >
           {/* Logo & Brand */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div
+            onClick={handleReset}
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none transition-opacity hover:opacity-90"
+            title="CodeComment AI - Start fresh"
+          >
             <div className="w-8 h-8 rounded-lg bg-[var(--accent-gradient)] flex items-center justify-center text-white shadow-sm shadow-indigo-500/30">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="16 18 22 12 16 6" />
@@ -299,7 +309,7 @@ export default function Home() {
               id="header-settings-btn"
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] transition-all shadow-xs cursor-pointer"
+              className="flex items-center gap-2 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] transition-all shadow-xs cursor-pointer"
               title="Open Settings"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -316,10 +326,16 @@ export default function Home() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col gap-5">
+      <main
+        id="main-content"
+        className="flex-1 max-w-7xl mx-auto w-full flex flex-col gap-3"
+      >
         {/* Input & Editor View */}
         {!result && !loading && (
-          <div className="clean-card p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 w-full">
+          <div
+            id="input-editor-view"
+            className="clean-card flex flex-col gap-4 sm:gap-5 w-full"
+          >
             {/* Top Toolbar Grid: 2x2 on mobile, 4-col on tablet & desktop */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 items-end w-full">
               {/* 1. Filename */}
@@ -471,21 +487,32 @@ export default function Home() {
 
         {/* Documented Result & Diff View */}
         {result && !loading && (
-          <div className="flex flex-col gap-5 w-full">
+          <div
+            id="result-view"
+            className="flex flex-col gap-5 w-full"
+          >
             {/* Analysis Stats Card */}
-            <div className="clean-card p-4 sm:p-6 w-full">
+            <div
+              id="analysis-stats-card"
+              className="clean-card w-full"
+            >
               <AnalysisSummary result={result} onSelectLine={handleJumpToLine} />
             </div>
 
             {/* Code Diff Card */}
-            <div className="clean-card p-4 sm:p-6 flex flex-col gap-4 w-full">
-              <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-[var(--border-subtle)]">
+            <div
+              id="code-comparison-card"
+              className="clean-card flex flex-col gap-4 w-full"
+            >
+              <div
+                id="comparison-header"
+                className="flex items-center justify-between flex-wrap gap-2 border-b border-[var(--border-subtle)]"
+              >
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm sm:text-base text-[var(--text-primary)]">
                     Code Comparison
                   </span>
                 </div>
-
               </div>
 
               <DiffViewer
@@ -497,7 +524,9 @@ export default function Home() {
             </div>
 
             {/* Result Action Bar */}
-            <div className="clean-card p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
+            <div 
+            id="result-action-bar"
+            className="clean-card p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
               <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400">
                   <polyline points="20 6 9 17 4 12" />

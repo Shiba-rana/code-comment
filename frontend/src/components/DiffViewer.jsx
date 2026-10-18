@@ -113,9 +113,12 @@ const DiffViewer = forwardRef(function DiffViewer(
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div 
+        id='btn-diff-action'
+        className="flex items-center gap-2">
           {/* Copy Button */}
           <button
+            id='copy-result-btn'
             type="button"
             onClick={handleCopyDocumented}
             className="px-2.5 py-1 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-white bg-[var(--bg-card)] border border-[var(--border-subtle)] hover:bg-[var(--bg-hover)] transition-all flex items-center gap-1.5"
@@ -140,8 +143,11 @@ const DiffViewer = forwardRef(function DiffViewer(
           </button>
 
           {/* View Mode Toggle: Split vs Unified */}
-          <div className="flex items-center rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 text-xs">
+          <div 
+          id='btn-diff-action'
+          className="flex items-center rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-0.5 text-xs">
             <button
+              id='split-view-btn'
               type="button"
               onClick={() => handleToggle(false)}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
@@ -153,6 +159,7 @@ const DiffViewer = forwardRef(function DiffViewer(
               Split
             </button>
             <button
+              id='unified-view-btn'
               type="button"
               onClick={() => handleToggle(true)}
               className={`px-2.5 py-1 rounded font-medium transition-all ${
@@ -167,6 +174,7 @@ const DiffViewer = forwardRef(function DiffViewer(
 
           {/* Expand Height Toggle */}
           <button
+            id='expand-height-btn'
             type="button"
             onClick={() => {
               setIsExpanded((prev) => !prev);

@@ -36,6 +36,7 @@ export default function SettingsModal({ isOpen, onClose, settings, onSaveSetting
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
+        id='settings-modal'
         className="modal-content p-6 flex flex-col gap-5 max-w-lg w-full"
         onClick={(e) => e.stopPropagation()}
       >
@@ -68,12 +69,16 @@ export default function SettingsModal({ isOpen, onClose, settings, onSaveSetting
 
         <form onSubmit={handleSave} className="flex flex-col gap-4 text-xs">
           {/* Mode Selector */}
-          <div className="flex flex-col gap-1.5">
+          <div
+            className="flex flex-col gap-1.5">
             <label className="font-medium text-[var(--text-secondary)]">
               Documentation Engine
             </label>
-            <div className="grid grid-cols-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] p-1 gap-1">
+            <div
+              id='engine-mode-selector'
+              className="grid grid-cols-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] p-1 gap-1">
               <button
+                id='btn-mode'
                 type="button"
                 onClick={() => setEngineMode('auto')}
                 className={`py-2 px-3 rounded-lg font-medium text-xs transition-all ${
@@ -85,6 +90,7 @@ export default function SettingsModal({ isOpen, onClose, settings, onSaveSetting
                 Auto (AI + AST Fallback)
               </button>
               <button
+                id='btn-mode'
                 type="button"
                 onClick={() => setEngineMode('ast-only')}
                 className={`py-2 px-3 rounded-lg font-medium text-xs transition-all ${
@@ -152,7 +158,7 @@ export default function SettingsModal({ isOpen, onClose, settings, onSaveSetting
             />
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] mt-2">
+          <div id='button-section' className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)] mt-2">
             <button
               type="button"
               onClick={handleReset}

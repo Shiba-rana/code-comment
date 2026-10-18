@@ -375,3 +375,161 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+#navbar {
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: rgba(13, 19, 34, 0.9);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+#navbar-inner {
+  height: 60px;
+  padding: 0 18px !important;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 640px) {
+  #navbar-inner {
+    height: 56px;
+    padding: 0 16px !important;
+  }
+}
+
+#header-settings-btn {
+  padding: 8px 16px !important;
+}
+
+#main-content {
+  padding: 12px 18px !important;
+  margin: 8px auto !important;
+}
+
+@media (max-width: 640px) {
+  #main-content {
+    padding: 20px 24px !important;
+    margin: 8px auto !important;
+  }
+}
+
+#input-editor-view {
+  padding: 24px 28px !important;
+  margin: 12px 0 !important;
+}
+
+@media (max-width: 640px) {
+  #input-editor-view {
+    padding: 16px 16px !important;
+    margin: 8px 0 !important;
+  }
+}
+
+#result-view {
+  padding: 4px 0 !important;
+  margin: 12px 0 !important;
+}
+
+#analysis-stats-card {
+  padding: 24px 28px !important;
+  margin: 0 0 16px 0 !important;
+}
+
+@media (max-width: 640px) {
+  #analysis-stats-card {
+    padding: 16px 16px !important;
+    margin: 0 0 12px 0 !important;
+  }
+}
+
+#overview-header {
+  padding: 0 0 14px 0 !important;
+  margin: 0 0 16px 0 !important;
+}
+
+@media (max-width: 640px) {
+  #overview-header {
+    padding: 0 0 12px 0 !important;
+    margin: 0 0 12px 0 !important;
+  }
+}
+
+#code-comparison-card {
+  padding: 24px 28px !important;
+  margin: 0 0 16px 0 !important;
+}
+
+@media (max-width: 640px) {
+  #code-comparison-card {
+    padding: 16px 16px !important;
+    margin: 0 0 12px 0 !important;
+  }
+}
+
+#comparison-header {
+  padding: 0 0 14px 0 !important;
+  margin: 0 0 16px 0 !important;
+}
+
+@media (max-width: 640px) {
+  #comparison-header {
+    padding: 0 0 12px 0 !important;
+    margin: 0 0 12px 0 !important;
+  }
+}
+#stats-header{
+  padding: 5px 10px !important;
+}
+
+#documented-symbols{
+  padding: 5px 10px !important;
+  background-color: rgb(56, 50, 93) !important;
+}
+
+#result-action-bar {
+  padding: 5px 10px !important;
+  background-color: rgb(56, 50, 93) !important;
+}
+
+#settings-modal {
+  padding: 24px !important;
+  margin: 12px 0 !important;
+}
+
+#engine-mode-selector {
+  padding: 10px !important;
+}
+
+#btn-mode {
+  padding: 10px !important;
+}
+
+#button-section {
+  padding: 10px !important;
+}
+
+#copy-result-btn{
+  padding: 2px 6px !important;
+}
+
+#split-view-btn{
+  padding: 2px 6px !important;
+  border-radius: 10px !important;
+}
+
+#unified-view-btn{
+  padding: 2px 6px !important;
+  border-radius: 10px !important;
+}
+
+#btn-diff-action{
+  border-radius: 10px !important;
+}
+
+#expand-height-btn{
+  padding: 2px 4px !important;
+  border-radius: 10px !important;
+}
+  

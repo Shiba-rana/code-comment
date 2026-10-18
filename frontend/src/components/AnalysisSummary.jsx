@@ -15,15 +15,19 @@ export default function AnalysisSummary({ result, onSelectLine }) {
   return (
     <div className="flex flex-col gap-4 sm:gap-5 w-full">
       {/* Overview Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-[var(--border-subtle)]">
+      <div
+        id="overview-header"
+        className="flex items-center justify-between flex-wrap gap-3 border-b border-[var(--border-subtle)]"
+      >
         <div className="flex items-center gap-2.5">
           <h2 className="text-sm sm:text-base font-semibold text-[var(--text-primary)]">
             Analysis Overview
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono px-2.5 py-1 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] font-medium">
+        <div 
+        className="flex items-center gap-2">
+          <span id="stats-header" className="text-xs font-mono px-2.5 py-1 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] font-medium">
             {result.language?.toUpperCase() || 'JAVASCRIPT'}
           </span>
           <span className="text-xs font-mono text-[var(--text-muted)] truncate max-w-[180px] sm:max-w-none">
@@ -83,6 +87,7 @@ export default function AnalysisSummary({ result, onSelectLine }) {
           <div className="flex flex-col gap-2 max-h-60 overflow-y-auto w-full pr-0.5">
             {documentedChanges.map((item, idx) => (
               <div
+                id="documented-symbols"
                 key={idx}
                 onClick={() => item.line && onSelectLine?.(item.line)}
                 className="flex flex-col gap-1.5 p-3 rounded-xl border bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border-[var(--border-subtle)] cursor-pointer hover:border-indigo-500/30 transition-all"
